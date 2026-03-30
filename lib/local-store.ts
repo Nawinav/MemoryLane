@@ -100,6 +100,30 @@ export async function updateLocalMemory(
   return nextMemory;
 }
 
+export async function deleteLocalMemory(id: string) {
+  const memories = await readMemoryFile();
+  const memory = memories.find((entry) => entry.id === id);
+
+  if (!memory) {
+    throw new Error("Memory not found.");
+  }
+
+  const nextMemories = memories.filter((entry) => entry.id !== id);
+  await writeMemoryFile(nextMemories);
+
+  if (memory.imagePath) {
+    const imageFilePath = path.join(uploadsDir, memory.imagePath);
+    await fs.unlink(imageFilePath).catch(() => undefined);
+  }
+
+  if (memory.styledImagePath) {
+    const styledFilePath = path.join(process.cwd(), "public", "ghibli", memory.styledImagePath);
+    await fs.unlink(styledFilePath).catch(() => undefined);
+  }
+
+  return memory;
+}
+
 export async function createLocalMemory(input: {
   draft: MemoryDraft;
   extension: string;

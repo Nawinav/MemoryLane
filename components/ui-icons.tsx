@@ -83,3 +83,14 @@ export function FolderHeartIcon({ className }: IconProps) {
     </SvgIcon>
   );
 }
+
+export function TrashIcon({ className }: IconProps) {
+  return (
+    <SvgIcon className={className}>
+      <path d="M4.5 7.5h15" />
+      <path d="M9.5 7.5V5.8A1.3 1.3 0 0 1 10.8 4.5h2.4a1.3 1.3 0 0 1 1.3 1.3v1.7" />
+      <path d="M6.2 7.5 7 18.2A1.5 1.5 0 0 0 8.5 19.5h7a1.5 1.5 0 0 0 1.5-1.3l.8-10.7" />
+      <path d="M10 10.5v5.5M14 10.5v5.5" />
+    </SvgIcon>
+  );
+}

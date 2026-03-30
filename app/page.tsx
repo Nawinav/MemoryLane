@@ -1,11 +1,12 @@
-import { AuthTools } from "@/components/auth-tools";
+import { cookies } from "next/headers";
+import { AccessControlsPopover } from "@/components/access-controls-popover";
 import { MemoryFolders } from "@/components/memory-folders";
 import { LogoutButton } from "@/components/logout-button";
 import { UploadForm } from "@/components/upload-form";
 import { HeartIcon, LockIcon } from "@/components/ui-icons";
+import { getSessionCookieName, verifySessionToken } from "@/lib/auth";
 import { getAiProviderStatus } from "@/lib/ai";
-import { isSupabaseConfigured } from "@/lib/supabase";
-import { isSupabaseAuthConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured, isSupabaseAuthConfigured } from "@/lib/supabase";
 import { listMemories } from "@/lib/memory-store";
 
 const defaultHeroSlides = [
@@ -20,17 +21,22 @@ const defaultHeroSlides = [
 ];
 
 export default async function HomePage() {
+  const cookieStore = await cookies();
   const memories = await listMemories();
   const aiProvider = getAiProviderStatus();
   const heroSlides = defaultHeroSlides;
+  const canManageMemories = await verifySessionToken(
+    cookieStore.get(getSessionCookieName())?.value
+  );
+  const accessModeLabel = canManageMemories ? "Owner Mode" : "View-Only Guest";
 
   return (
     <main className="page-shell">
       <header className="top-bar">
         <div className="brand-mark">
-          <div className="brand-badge">♡</div>
+          <div className="brand-badge">AN</div>
           <div>
-            <p className="brand-title">Naveen &amp; Aishwarya</p>
+            <p className="brand-title">Aishwarya &amp; Naveen</p>
             <p className="brand-subtitle">
               {isSupabaseConfigured() ? "Cloud-backed private gallery" : "Private local gallery"}
             </p>
@@ -38,6 +44,12 @@ export default async function HomePage() {
         </div>
 
         <div className="top-actions">
+          <div className={`access-badge ${canManageMemories ? "access-badge-owner" : ""}`}>
+            {accessModeLabel}
+          </div>
+          {canManageMemories ? (
+            <AccessControlsPopover allowSupabase={isSupabaseAuthConfigured()} />
+          ) : null}
           <div className="profile-pill">
             <span className="profile-avatar">N</span>
             <span>Naveen Kumar</span>
@@ -77,27 +89,31 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="upload-stage">
-        <div className={`provider-status provider-status-${aiProvider.mode}`}>
-          <span className="provider-status-dot" />
-          <span>AI provider: {aiProvider.label}</span>
-        </div>
-        <UploadForm />
-      </section>
-
-      <section className="timeline-section access-section">
-        <div className="section-heading section-heading-inline">
-          <div>
-            <p className="eyebrow section-icon-heading">
-              <LockIcon className="inline-section-icon" />
-              Access Tools
-            </p>
-            <h2>Private account controls</h2>
+      {canManageMemories ? (
+        <section className="upload-stage">
+          <div className={`provider-status provider-status-${aiProvider.mode}`}>
+            <span className="provider-status-dot" />
+            <span>AI provider: {aiProvider.label}</span>
           </div>
-          <p>Send reset links or invite a trusted user when cloud auth is active.</p>
-        </div>
-        <AuthTools allowSupabase={isSupabaseAuthConfigured()} />
-      </section>
+          <UploadForm />
+        </section>
+      ) : (
+        <section className="timeline-section access-section">
+          <div className="section-heading section-heading-inline">
+            <div>
+              <p className="eyebrow section-icon-heading">
+                <LockIcon className="inline-section-icon" />
+                Viewing Access
+              </p>
+              <h2>Guest view of our memories</h2>
+            </div>
+            <p>
+              This account can explore the gallery, while uploads and deletions stay
+              available only to the couple-password login.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="timeline-section memories-section">
         <div className="section-heading section-heading-inline">
@@ -113,7 +129,7 @@ export default async function HomePage() {
             with place, date, and romantic context.
           </p>
         </div>
-        <MemoryFolders memories={memories} />
+        <MemoryFolders canDelete={canManageMemories} memories={memories} />
       </section>
     </main>
   );

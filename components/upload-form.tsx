@@ -134,11 +134,6 @@ export function UploadForm() {
         </div>
 
         <div className="upload-footer">
-          <p className="helper-text">
-            GPS-enabled photos can reveal date and nearby place information
-            automatically. If Windows says it cannot open multiple items, select
-            from a normal folder or drag the photos into this area instead.
-          </p>
           <button className="primary-button" disabled={isPending} type="submit">
             {isPending ? "Saving..." : files.length > 1 ? "Save memories" : "Save memory"}
           </button>

@@ -32,13 +32,8 @@ export default async function LoginPage({
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <p className="eyebrow">Private Memory Space</p>
-        <h1>Sign in to view your shared memories.</h1>
-        <p className="hero-text">
-          This gallery is private. You can sign in with your Supabase user account
-          when cloud auth is configured, or use the local couple password as a
-          fallback.
-        </p>
+        <p className="eyebrow">Aishwarya - Naveen Photo Gallery</p>
+        <h1>Sign in to view our shared memories.</h1>
 
         {!isAnyAuthConfigured() ? (
           <div className="auth-warning">

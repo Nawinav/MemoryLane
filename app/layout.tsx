@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   Aladin,
   Aboreto,
+  Arizonia,
   Comic_Neue,
   MedievalSharp,
   Nothing_You_Could_Do,
@@ -47,6 +48,12 @@ const aboreto = Aboreto({
   weight: "400"
 });
 
+const arizonia = Arizonia({
+  subsets: ["latin"],
+  variable: "--font-arizonia",
+  weight: "400"
+});
+
 const quintessential = Quintessential({
   subsets: ["latin"],
   variable: "--font-quintessential",
@@ -72,7 +79,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${waterfall.variable} ${comicNeue.variable} ${novaOval.variable} ${medievalSharp.variable} ${aladin.variable} ${aboreto.variable} ${quintessential.variable} ${nothingYouCouldDo.variable}`}
+        className={`${waterfall.variable} ${comicNeue.variable} ${novaOval.variable} ${medievalSharp.variable} ${aladin.variable} ${aboreto.variable} ${arizonia.variable} ${quintessential.variable} ${nothingYouCouldDo.variable}`}
       >
         {children}
       </body>

@@ -4,8 +4,7 @@ import * as exifr from "exifr";
 import { buildAiMemoryText, buildFallbackMemoryText } from "@/lib/ai";
 import {
   getSessionCookieName,
-  getSupabaseAccessCookieName,
-  verifyAnySession
+  verifySessionToken
 } from "@/lib/auth";
 import { reverseGeocodeLocation } from "@/lib/geocode";
 import { createMemory } from "@/lib/memory-store";
@@ -117,13 +116,11 @@ async function createMemoryFromPhoto(input: {
 
 export async function POST(request: Request) {
   const cookieStore = await cookies();
-  if (
-    !(await verifyAnySession({
-      passwordToken: cookieStore.get(getSessionCookieName())?.value,
-      supabaseAccessToken: cookieStore.get(getSupabaseAccessCookieName())?.value
-    }))
-  ) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await verifySessionToken(cookieStore.get(getSessionCookieName())?.value))) {
+    return NextResponse.json(
+      { error: "Only the couple-password session can upload memories." },
+      { status: 403 }
+    );
   }
 
   const formData = await request.formData();

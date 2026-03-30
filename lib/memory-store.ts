@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import {
   createLocalMemory,
+  deleteLocalMemory,
   listLocalMemories,
   readLocalMemoryBytes,
   saveLocalDerivedImage,
@@ -204,6 +205,34 @@ async function saveSupabaseDerivedImage(input: {
   };
 }
 
+async function deleteSupabaseMemory(id: string) {
+  const supabase = getSupabaseAdmin();
+  const bucket = getSupabaseBucket();
+
+  const lookup = await supabase.from("memories").select("*").eq("id", id).single();
+
+  if (lookup.error || !lookup.data) {
+    throw lookup.error ?? new Error("Memory not found.");
+  }
+
+  const memory = lookup.data as SupabaseMemoryRow;
+  const storagePaths = [memory.imagePath, memory.styledImagePath].filter(
+    (value): value is string => Boolean(value)
+  );
+
+  if (storagePaths.length > 0) {
+    await supabase.storage.from(bucket).remove(storagePaths);
+  }
+
+  const deletion = await supabase.from("memories").delete().eq("id", id);
+
+  if (deletion.error) {
+    throw deletion.error;
+  }
+
+  return memory;
+}
+
 export async function listMemories() {
   if (isSupabaseConfigured()) {
     try {
@@ -320,4 +349,16 @@ export async function createMemory(input: {
     },
     extension: input.extension
   });
+}
+
+export async function deleteMemory(id: string) {
+  if (isSupabaseConfigured()) {
+    try {
+      return await deleteSupabaseMemory(id);
+    } catch {
+      return deleteLocalMemory(id);
+    }
+  }
+
+  return deleteLocalMemory(id);
 }

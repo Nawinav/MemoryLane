@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 export function LoginForm({
   allowLocalPassword,
@@ -11,12 +11,28 @@ export function LoginForm({
   allowSupabase: boolean;
   nextPath: string;
 }) {
+  const hasBothOptions = allowSupabase && allowLocalPassword;
+  const [provider, setProvider] = useState<"supabase" | "local">(
+    allowSupabase ? "supabase" : "local"
+  );
   const [message, setMessage] = useState(
     allowSupabase
       ? "Sign in with your private account to open the gallery."
       : "Enter your private password to continue."
   );
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setProvider(allowSupabase ? "supabase" : "local");
+  }, [allowLocalPassword, allowSupabase]);
+
+  useEffect(() => {
+    setMessage(
+      provider === "supabase"
+        ? "Sign in with your private account to open the gallery."
+        : "Enter your couple password to open the gallery."
+    );
+  }, [provider]);
 
   return (
     <form
@@ -25,11 +41,13 @@ export function LoginForm({
         event.preventDefault();
         const form = event.currentTarget;
         const formData = new FormData(form);
-        const provider = `${formData.get("provider") ?? "local"}`;
+        const selectedProvider = `${formData.get("provider") ?? "local"}`;
 
         startTransition(async () => {
           setMessage(
-            provider === "supabase" ? "Signing in with Supabase..." : "Checking password..."
+            selectedProvider === "supabase"
+              ? "Signing in with Supabase..."
+              : "Checking password..."
           );
           const response = await fetch("/api/auth/login", {
             method: "POST",
@@ -38,7 +56,7 @@ export function LoginForm({
 
           if (!response.ok) {
             setMessage(
-              provider === "supabase"
+              selectedProvider === "supabase"
                 ? "Email or password was not accepted. Please try again."
                 : "Password was not accepted. Please try again."
             );
@@ -49,7 +67,28 @@ export function LoginForm({
         });
       }}
     >
-      {allowSupabase ? (
+      {hasBothOptions ? (
+        <div className="auth-provider-switch" role="tablist" aria-label="Choose sign in method">
+          <button
+            aria-selected={provider === "supabase"}
+            className={`auth-provider-tab ${provider === "supabase" ? "is-active" : ""}`}
+            onClick={() => setProvider("supabase")}
+            type="button"
+          >
+            Email login
+          </button>
+          <button
+            aria-selected={provider === "local"}
+            className={`auth-provider-tab ${provider === "local" ? "is-active" : ""}`}
+            onClick={() => setProvider("local")}
+            type="button"
+          >
+            Couple password
+          </button>
+        </div>
+      ) : null}
+
+      {allowSupabase && provider === "supabase" ? (
         <>
           <input name="provider" type="hidden" value="supabase" />
           <label className="upload-field">
@@ -75,7 +114,7 @@ export function LoginForm({
         </>
       ) : null}
 
-      {!allowSupabase && allowLocalPassword ? (
+      {allowLocalPassword && provider === "local" ? (
         <>
           <input name="provider" type="hidden" value="local" />
           <label className="upload-field">
@@ -94,12 +133,6 @@ export function LoginForm({
       <button className="primary-button" disabled={isPending} type="submit">
         {isPending ? "Signing in..." : "Open private gallery"}
       </button>
-      {allowSupabase && allowLocalPassword ? (
-        <p className="helper-text">
-          Supabase login is active. Remove <code>SUPABASE_ANON_KEY</code> if you
-          want to use only the local couple password.
-        </p>
-      ) : null}
       <p className="helper-text">{message}</p>
     </form>
   );

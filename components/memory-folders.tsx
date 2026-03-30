@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { DeleteMemoryButton } from "@/components/delete-memory-button";
 import {
   FolderHeartIcon,
   HeartIcon,
@@ -58,7 +59,13 @@ function groupMemoriesByDate(memories: MemoryEntry[]) {
   }));
 }
 
-export function MemoryFolders({ memories }: { memories: MemoryEntry[] }) {
+export function MemoryFolders({
+  canDelete,
+  memories
+}: {
+  canDelete: boolean;
+  memories: MemoryEntry[];
+}) {
   if (memories.length === 0) {
     return (
       <div className="empty-state">
@@ -174,6 +181,8 @@ export function MemoryFolders({ memories }: { memories: MemoryEntry[] }) {
                       </div>
                       <p className="quote-text">{memory.romanticQuote}</p>
                     </div>
+
+                    {canDelete ? <DeleteMemoryButton memoryId={memory.id} /> : null}
                   </div>
                 </article>
               ))}
