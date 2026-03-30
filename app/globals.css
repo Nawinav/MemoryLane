@@ -357,12 +357,121 @@ button:hover:not(:disabled) {
 }
 
 .upload-card {
+  position: relative;
   background: transparent;
 }
 
 .upload-form {
   display: grid;
   gap: 20px;
+  position: relative;
+}
+
+.upload-loader-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border-radius: 34px;
+  background: rgba(237, 245, 236, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.upload-loader-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(360px, 100%);
+  padding: 24px 22px;
+  border-radius: 26px;
+  border: 1px solid rgba(95, 118, 102, 0.18);
+  background: linear-gradient(180deg, rgba(248, 252, 247, 0.96), rgba(235, 244, 233, 0.96));
+  box-shadow: 0 20px 46px rgba(49, 76, 57, 0.12);
+  text-align: center;
+}
+
+.heartbeat-loader {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+}
+
+.heartbeat-loader-core,
+.heartbeat-loader-ring {
+  position: absolute;
+  border-radius: 999px;
+}
+
+.heartbeat-loader-core {
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle at 30% 30%, #f8fff7, #6b8b73 62%, #4d6555 100%);
+  box-shadow:
+    0 0 0 10px rgba(107, 139, 115, 0.1),
+    0 10px 24px rgba(77, 101, 85, 0.18);
+  animation: heartbeatPulse 1.15s ease-in-out infinite;
+}
+
+.heartbeat-loader-ring {
+  inset: 0;
+  border: 2px solid rgba(107, 139, 115, 0.34);
+  animation: heartbeatWave 1.8s ease-out infinite;
+}
+
+.heartbeat-loader-ring-two {
+  animation-delay: 0.9s;
+}
+
+.upload-loader-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-quintessential), serif;
+  font-size: 1.3rem;
+}
+
+.upload-loader-copy {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-nova-oval), serif;
+  line-height: 1.6;
+  font-size: 0.98rem;
+}
+
+@keyframes heartbeatPulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+  }
+  18% {
+    transform: scale(1.08);
+  }
+  32% {
+    transform: scale(0.98);
+  }
+  48% {
+    transform: scale(1.16);
+  }
+  68% {
+    transform: scale(1);
+  }
+}
+
+@keyframes heartbeatWave {
+  0% {
+    transform: scale(0.55);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
 }
 
 .upload-dropzone {
@@ -1734,6 +1843,16 @@ body {
     min-height: 220px;
     padding: 24px 16px;
     border-radius: 22px;
+  }
+
+  .upload-loader-overlay {
+    border-radius: 22px;
+    padding: 14px;
+  }
+
+  .upload-loader-card {
+    padding: 20px 16px;
+    border-radius: 20px;
   }
 
   .upload-dropzone h3 {

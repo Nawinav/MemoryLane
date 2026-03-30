@@ -2,6 +2,34 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 
+const MAX_BULK_UPLOAD = 20;
+const MAX_BATCH_BYTES = 18 * 1024 * 1024;
+
+function createUploadBatches(files: File[]) {
+  const batches: File[][] = [];
+  let currentBatch: File[] = [];
+  let currentSize = 0;
+
+  for (const file of files) {
+    const nextSize = currentSize + file.size;
+    if (currentBatch.length > 0 && nextSize > MAX_BATCH_BYTES) {
+      batches.push(currentBatch);
+      currentBatch = [file];
+      currentSize = file.size;
+      continue;
+    }
+
+    currentBatch.push(file);
+    currentSize = nextSize;
+  }
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
+}
+
 export function UploadForm() {
   const [isPending, startTransition] = useTransition();
   const [files, setFiles] = useState<File[]>([]);
@@ -31,10 +59,17 @@ export function UploadForm() {
     <div className="upload-card">
       <form
         className="upload-form"
+        aria-busy={isPending}
         onSubmit={(event) => {
           event.preventDefault();
+          if (files.length > MAX_BULK_UPLOAD) {
+            setMessage(`You can upload up to ${MAX_BULK_UPLOAD} photos at once.`);
+            return;
+          }
+
           const form = event.currentTarget;
-          const formData = new FormData(form);
+          const note = `${new FormData(form).get("note") ?? ""}`;
+          const batches = createUploadBatches(files);
 
           startTransition(async () => {
             setMessage(
@@ -43,23 +78,80 @@ export function UploadForm() {
                 : "Creating your memory folder..."
             );
 
-            const response = await fetch("/api/upload", {
-              method: "POST",
-              body: formData
-            });
+            let totalSaved = 0;
+            const duplicateNames: string[] = [];
 
-            if (!response.ok) {
-              setMessage("Something went wrong while saving the photos.");
-              return;
+            for (const [index, batch] of batches.entries()) {
+              setMessage(
+                batches.length > 1
+                  ? `Uploading batch ${index + 1} of ${batches.length}...`
+                  : "Uploading your photos..."
+              );
+
+              const batchFormData = new FormData();
+              for (const file of batch) {
+                batchFormData.append("photos", file);
+              }
+              batchFormData.append("note", note);
+
+              const response = await fetch("/api/upload", {
+                method: "POST",
+                body: batchFormData
+              });
+
+              const payload = (await response.json().catch(() => null)) as
+                | {
+                    count?: number;
+                    duplicateNames?: string[];
+                    error?: string;
+                  }
+                | null;
+
+              if (!response.ok) {
+                setMessage(payload?.error ?? "Something went wrong while saving the photos.");
+                return;
+              }
+
+              totalSaved += payload?.count ?? 0;
+              duplicateNames.push(...(payload?.duplicateNames ?? []));
             }
 
             form.reset();
             setFiles([]);
-            setMessage("Memory saved successfully. Refreshing timeline...");
+            const duplicateCount = duplicateNames.length;
+            const savedCount = totalSaved;
+
+            if (savedCount === 0 && duplicateCount > 0) {
+              setMessage("All selected photos were already uploaded, so duplicates were skipped.");
+              return;
+            }
+
+            if (duplicateCount > 0) {
+              setMessage(
+                `Saved ${savedCount} ${savedCount === 1 ? "memory" : "memories"} and skipped ${duplicateCount} duplicate ${duplicateCount === 1 ? "photo" : "photos"}. Refreshing timeline...`
+              );
+            } else {
+              setMessage("Memory saved successfully. Refreshing timeline...");
+            }
+
             window.location.reload();
           });
         }}
       >
+        {isPending ? (
+          <div className="upload-loader-overlay" aria-live="polite" aria-label="Uploading photos">
+            <div className="upload-loader-card">
+              <div className="heartbeat-loader" aria-hidden="true">
+                <span className="heartbeat-loader-core" />
+                <span className="heartbeat-loader-ring heartbeat-loader-ring-one" />
+                <span className="heartbeat-loader-ring heartbeat-loader-ring-two" />
+              </div>
+              <p className="upload-loader-title">Saving your memories</p>
+              <p className="upload-loader-copy">{message}</p>
+            </div>
+          </div>
+        ) : null}
+
         <div
           className={`upload-dropzone ${isDragging ? "is-dragging" : ""}`}
           onClick={() => fileInputRef.current?.click()}
@@ -100,7 +192,7 @@ export function UploadForm() {
           <h3>Share your beautiful memories</h3>
           <p className="upload-intro">Drag and drop or click to upload photos</p>
           <p className="upload-caption">
-            Upload one photo or many from the same day and let the website turn
+            Upload up to 20 photos from the same day and let the website turn
             them into a romantic memory folder.
           </p>
           <div className="upload-actions">

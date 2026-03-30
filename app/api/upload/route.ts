@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
 import * as exifr from "exifr";
 import { buildAiMemoryText, buildFallbackMemoryText } from "@/lib/ai";
 import {
@@ -7,7 +8,7 @@ import {
   verifySessionToken
 } from "@/lib/auth";
 import { reverseGeocodeLocation } from "@/lib/geocode";
-import { createMemory } from "@/lib/memory-store";
+import { createMemory, listMemories, readMemoryBytes } from "@/lib/memory-store";
 import type { MemoryEntry } from "@/lib/types";
 
 type PartialExif = {
@@ -35,11 +36,34 @@ type LocationMeta = {
   source: MemoryEntry["locationSource"];
 };
 
+const MAX_BULK_UPLOAD = 20;
+
+function hashImageBytes(bytes: Buffer) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+async function getExistingImageHashes() {
+  const memories = await listMemories();
+  const hashes = await Promise.all(
+    memories.map(async (memory) => {
+      try {
+        const bytes = await readMemoryBytes(memory);
+        return hashImageBytes(bytes);
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return new Set(hashes.filter((value): value is string => Boolean(value)));
+}
+
 async function createMemoryFromPhoto(input: {
+  bytes: Buffer;
   note: string;
   photo: File;
 }) {
-  const bytes = Buffer.from(await input.photo.arrayBuffer());
+  const bytes = input.bytes;
   const imageBase64 = bytes.toString("base64");
   const seed = `${input.photo.name}:${bytes.length}:${bytes.subarray(0, 24).toString("hex")}`;
   const extension = input.photo.name.includes(".")
@@ -123,7 +147,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "This upload batch is too large to process in one request. Try fewer photos at a time or use the updated chunked uploader."
+      },
+      { status: 413 }
+    );
+  }
+
   const photos = [
     ...formData
       .getAll("photos")
@@ -138,10 +174,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "At least one photo is required." }, { status: 400 });
   }
 
+  if (photos.length > MAX_BULK_UPLOAD) {
+    return NextResponse.json(
+      { error: `You can upload up to ${MAX_BULK_UPLOAD} photos at once.` },
+      { status: 400 }
+    );
+  }
+
+  const existingHashes = await getExistingImageHashes();
+  const batchHashes = new Set<string>();
+  const duplicateNames: string[] = [];
   const memories = [];
 
   for (const [, photo] of photos.entries()) {
+    const bytes = Buffer.from(await photo.arrayBuffer());
+    const imageHash = hashImageBytes(bytes);
+
+    if (existingHashes.has(imageHash) || batchHashes.has(imageHash)) {
+      duplicateNames.push(photo.name);
+      continue;
+    }
+
+    batchHashes.add(imageHash);
     const memory = await createMemoryFromPhoto({
+      bytes,
       note,
       photo
     });
@@ -150,6 +206,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     count: memories.length,
+    duplicateNames,
     memories
   });
 }
